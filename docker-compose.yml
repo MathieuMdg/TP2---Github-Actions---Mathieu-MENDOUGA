@@ -1,7 +1,7 @@
 services:
   database:
     build: ./database
-    image: mathieumdg/my-database:1.0
+    image: mathieumdg/my-database:latest
     container_name: database
     restart: unless-stopped
     env_file: .env
@@ -13,7 +13,7 @@ services:
 
   backend:
     build: ./simpleapi
-    image: mathieumdg/my-backend:1.0
+    image: mathieumdg/my-backend:latest
     container_name: backend
     restart: unless-stopped
     networks:
@@ -24,7 +24,7 @@ services:
 
   httpd:
     build: ./httpd
-    image: mathieumdg/my-httpd:1.0
+    image: mathieumdg/my-httpd:latest
     container_name: httpd
     restart: unless-stopped
     ports:
