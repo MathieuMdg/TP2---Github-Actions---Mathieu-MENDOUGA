@@ -24,4 +24,4 @@ jobs:
 
      #finally build your app with the latest command
       - name: Build and test with Maven
-        run: docker compose up -d --build 
+        run: maven clean verify
