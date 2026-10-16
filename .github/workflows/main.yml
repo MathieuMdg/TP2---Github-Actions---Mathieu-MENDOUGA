@@ -13,8 +13,6 @@ jobs:
   test-backend:
     runs-on: ubuntu-24.04
     steps:
-      # Récupère le code du dépôt
-      # fetch-depth: 0 = historique complet, recommandé par SonarCloud
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,7 +24,7 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      # Cache du cache SonarCloud pour accélérer les analyses
+      # Cache SonarCloud pour accélérer les analyses
       - name: Cache SonarCloud packages
         uses: actions/cache@v4
         with:
@@ -42,8 +40,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      # Build + tests unitaires/intégration (verify) + analyse qualité SonarCloud
-      # Le token est lu automatiquement depuis la variable d'environnement SONAR_TOKEN
+      # Token read automatically SONAR_TOKEN
       - name: Build, test and analyze with SonarCloud
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -72,13 +69,12 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      # push uniquement sur main : les autres branches/PR construisent sans publier
+      # push only on main
       - name: Build image and push backend
         uses: docker/build-push-action@v6
         with:
           context: ./simpleapi
           push: ${{ github.ref == 'refs/heads/main' }}
-          # Note: tags has to be all lower-case
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-backend:latest
 
       - name: Build image and push database
@@ -86,7 +82,6 @@ jobs:
         with:
           context: ./database
           push: ${{ github.ref == 'refs/heads/main' }}
-          # Note: tags has to be all lower-case
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-database:latest
 
       - name: Build image and push httpd
@@ -94,5 +89,4 @@ jobs:
         with:
           context: ./httpd
           push: ${{ github.ref == 'refs/heads/main' }}
-          # Note: tags has to be all lower-case
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-httpd:latest
