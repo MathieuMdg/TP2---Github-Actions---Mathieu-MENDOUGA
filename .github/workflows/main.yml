@@ -3,29 +3,56 @@ on:
   #to begin you want to launch this job in main and develop
   push:
     branches:
-      - main 
+      - main
       - develop
   pull_request:
     branches: main
 
 jobs:
 
-  test-backend: 
+  test-backend:
     runs-on: ubuntu-24.04
     steps:
-     #checkout your github code using actions/checkout@v4
+      # Récupère le code du dépôt
+      # fetch-depth: 0 = historique complet, recommandé par SonarCloud
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-     #do the same with another action (actions/setup-java@v4) that enable to setup jdk 21
+      # Installe le JDK 21
       - name: Set up JDK 21
         uses: actions/setup-java@v4
-        with: 
+        with:
           distribution: temurin
           java-version: 21
 
-     #finally build your app with the latest command
-      - name: Build and test with Maven
-        run: mvn -f simpleapi/pom.xml clean verify
+      # Cache du cache SonarCloud pour accélérer les analyses
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      # Cache des dépendances Maven
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      # Build + tests unitaires/intégration (verify) + analyse qualité SonarCloud
+      # Le token est lu automatiquement depuis la variable d'environnement SONAR_TOKEN
+      - name: Build, test and analyze with SonarCloud
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          mvn -B -f simpleapi/pom.xml clean verify
+          org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          -Dsonar.projectKey=MathieuMdg_TP2---Github-Actions---Mathieu-MENDOUGA
+          -Dsonar.organization=mathieumdg
+          -Dsonar.host.url=https://sonarcloud.io
 
 
   # define job to build and publish docker image
@@ -45,13 +72,14 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
+      # push uniquement sur main : les autres branches/PR construisent sans publier
       - name: Build image and push backend
         uses: docker/build-push-action@v6
         with:
           context: ./simpleapi
-          push : ${{ github.ref == 'refs/heads/main' }}
+          push: ${{ github.ref == 'refs/heads/main' }}
           # Note: tags has to be all lower-case
-          tags:  ${{secrets.DOCKER_HUB_USERNAME}}/github-actions-my-backend:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-backend:latest
 
       - name: Build image and push database
         uses: docker/build-push-action@v6
@@ -59,7 +87,7 @@ jobs:
           context: ./database
           push: ${{ github.ref == 'refs/heads/main' }}
           # Note: tags has to be all lower-case
-          tags:  ${{secrets.DOCKER_HUB_USERNAME}}/github-actions-my-database:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-database:latest
 
       - name: Build image and push httpd
         uses: docker/build-push-action@v6
@@ -67,7 +95,4 @@ jobs:
           context: ./httpd
           push: ${{ github.ref == 'refs/heads/main' }}
           # Note: tags has to be all lower-case
-          tags:  ${{secrets.DOCKER_HUB_USERNAME}}/github-actions-my-httpd:latest
-
-
-  
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-httpd:latest
