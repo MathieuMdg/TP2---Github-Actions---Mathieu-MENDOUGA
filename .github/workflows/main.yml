@@ -90,3 +90,21 @@ jobs:
           context: ./httpd
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/github-actions-my-httpd:latest
+
+
+  # once the images are published on main, ask the Ansible repository to deploy
+  trigger-deploy:
+    needs: build-and-push-docker-image
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Trigger the deployment in the Ansible repository
+        env:
+          ANSIBLE_REPO_TOKEN: ${{ secrets.ANSIBLE_REPO_TOKEN }}
+        run: |
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $ANSIBLE_REPO_TOKEN" \
+            https://api.github.com/repos/MathieuMdg/TP3---Ansible---Mathieu-MENDOUGA/dispatches \
+            -d '{"event_type":"deploy","client_payload":{"sha":"${{ github.sha }}"}}'
